@@ -1,0 +1,11 @@
+The observations are as follows:
+
+1) As size of file increases, db insert time increases.
+
+2) If we change the order of file sizes(large size, smaller file, larger file...), we see that time of insertion is proportional to the size of file
+
+3) We observe that on inserting the same file in a loop 10 times, there is a fair degree of consistency in readings, with one or two anomalies in the readings, due to machine issues.
+
+4) On similar machines like 2 i3 machines, there isnt a radical difference in readings. But an i5 machine produces faster results
+
+5) We cannot insert a file greater than 18MB in one call. If we try to insert a 20MB file, it crashes.

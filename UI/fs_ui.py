@@ -139,8 +139,31 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             db.file_schema.update_one({"Name":str(filename_part[len(filename_part)-1])},{"$set" : {"Path":str(flat_file_path_mongo)} })
 
+            self.checkTags(str(tags))
 
+    def checkTags(self, tags):
+        t = tags.split(',')
+        client = MongoClient()
 
+        db = client.dr_schemas
+        for i in t:
+            tagcursor = db.tags_schema.find({"tag": str(i)}, {"_id": 0, "filename": 1})
+            if (tagcursor.count() != 0):
+                for document in tagcursor:
+                    db.tags_schema.update(
+                        {"tag": str(i)},
+                        {
+                            "$set": {
+                                "filename": document['filename'] + ',' + str(global_filename)
+                            },
+                            "$currentDate": {"lastModified": True}
+                        }
+                    )
+            else:
+                db.tags_schema.insert_one({
+                    "tag": str(i),
+                    "filename": str(global_filename)
+                })
 
     def search_and_open(self):
 

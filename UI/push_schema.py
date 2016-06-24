@@ -1,7 +1,7 @@
 import json
 from pymongo import MongoClient
 
-list_of_schemas = ['File_schema.json','Opening_App.json','User_schema.json','Address_schema.json']
+list_of_schemas = ['File_schema.json','Opening_App.json','User_schema.json','Address_schema.json','Tags_schema.json']
 client = MongoClient()
 db = client.dr_schemas
 
@@ -21,4 +21,8 @@ for i in list_of_schemas:
             result = db.user_schema.insert_one(j)
     elif i == "Address_schema.json":
         for j in json_objs:
-            result = db.appopen_schema.insert_one(j)
+            result = db.address_schema.insert_one(j)
+    elif i == "Tags_schema.json":
+        for j in json_objs:
+            result = db.tags_schema.insert_one(j)
+

@@ -6,6 +6,12 @@ qtCreatorFile = "/home/ashwin/DR/fs_ui.ui"  # Enter file here.
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 fname = ''
+global_filename = ''
+
+
+
+
+
 class MyApp(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -21,7 +27,19 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
                                             '/home/ashwin')
         self.file_path.setText(fname)
 
+    def file_exist_check(self, filename):
+        client = MongoClient()
+        db = client.dr_schemas
+        cursor = db.file_schema.find({"Name": filename})
+        print cursor.count()
+        if (cursor.count() > 0):
+            return 1;
+        else:
+            return 0;
+
     def upload_file(self):
+
+        global global_filename
         if(self.file_path.toPlainText()==''):
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Critical)
@@ -37,7 +55,7 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             flat_file_path = '/home/ashwin/FLAT_FILE_SYSTEM/%s'%(filename_part[len(filename_part)-1])
 
-
+            global_filename = str(filename_part[len(filename_part)-1])
 
             extension = filename_part[len(filename_part)-1].split('.')
 
@@ -62,47 +80,67 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             db = client.dr_schemas
 
-            result = db.file_schema.insert_one({
+            res_exist = self.file_exist_check(global_filename)
 
-  "Name":str(filename_part[len(filename_part)-1]),
-  "Description": str(description) ,
-  "Type":str(type),
-  "Color": "",
-  "Extension_Type":str(ext),
-  "Creator Details":{
-		"user id": "",
-		"user name": "",
-		"date of creation":str(creation_time),
-		"group_id":""
-  },
+            print res_exist
 
-  "Size": str(file_size),
-  "Modified":{
-		"Number of Modifications": "",
-		"Last Modified": str(modified_time)
+            if(res_exist==1):
+                msg = QtGui.QMessageBox()
+                msg.setIcon(QtGui.QMessageBox.Critical)
+
+                msg.setText("Error. File exists")
+
+                msg.setWindowTitle("Error")
+                msg.setStandardButtons(QtGui.QMessageBox.Ok)
+                msg.exec_()
+
+            else:
 
 
-  },
-  "Log":[
-	  {
-		 "User Id": "",
-		 "User Name": "",
-		 "Date of Modification":"",
-		 "Details": ""
-	  }
-  ],
-  "Tags":[] ,
-  "Path": str(flat_file_path),
-  "Linked Files": []
-})
+                result = db.file_schema.insert_one({
 
-        print result.inserted_id
+      "Name":str(filename_part[len(filename_part)-1]),
+      "Description": str(description) ,
+      "Type":str(type),
+      "Color": "",
+      "Extension_Type":str(ext),
+      "Creator Details":{
+            "user id": "",
+            "user name": "",
+            "date of creation":str(creation_time),
+            "group_id":""
+      },
 
-        flat_file_path_mongo = '/home/ashwin/FLAT_FILE_SYSTEM/%s'%(str(result.inserted_id)+"."+ext)
+      "Size": str(file_size),
+      "Modified":{
+            "Number of Modifications": "",
+            "Last Modified": str(modified_time)
 
-        shutil.copy2(fname, flat_file_path_mongo)
 
-        db.file_schema.update_one({"Name":str(filename_part[len(filename_part)-1])},{"$set" : {"Path":str(flat_file_path_mongo)} })
+      },
+      "Log":[
+          {
+             "User Id": "",
+             "User Name": "",
+             "Date of Modification":"",
+             "Details": ""
+          }
+      ],
+      "Tags":[] ,
+      "Path": str(flat_file_path),
+      "Linked Files": []
+    })
+
+            print result.inserted_id
+
+            flat_file_path_mongo = '/home/ashwin/FLAT_FILE_SYSTEM/%s'%(str(result.inserted_id)+"."+ext)
+
+            shutil.copy2(fname, flat_file_path_mongo)
+
+            db.file_schema.update_one({"Name":str(filename_part[len(filename_part)-1])},{"$set" : {"Path":str(flat_file_path_mongo)} })
+
+
+
 
     def search_and_open(self):
 

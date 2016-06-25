@@ -8,7 +8,7 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 fname = ''
 global_filename = ''
 
-
+filelist = ''
 
 
 
@@ -166,33 +166,66 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
                 })
 
     def search_and_open(self):
+        global filelist
 
-        client = MongoClient()
+        if str(self.search_box.toPlainText()) != "":
+            client = MongoClient()
+            db = client.dr_schemas
 
-        db = client.dr_schemas
+            radiotag = self.radioTag.isChecked()
+            radiofile = self.radioFile.isChecked()
 
-        cursor = db.file_schema.find({"Name": str(self.search_box.toPlainText())},{"_id":0, "Path": 1})
+            if radiotag == True:
+                cursorcount = db.tags_schema.find({"tag": str(self.search_box.toPlainText())}, {"_id": 0, "filename": 1})
+                if cursorcount.count() != 0:
+                    for document in cursorcount:
+                        filearry = document['filename'].split(',')
 
-        if(cursor.count()==0):
+                        for j in filearry:
+                            filelist += j + ","
+                        print filelist
+                        #self.results.setText(filelist)
+                        # cursor = db.file.find({"Name": document['filename']}, {"_id": 0, "Path": 1})
+                else:
+                    msg = QtGui.QMessageBox()
+                    msg.setIcon(QtGui.QMessageBox.Critical)
 
+                    msg.setText("Error. File not found")
+
+                    msg.setWindowTitle("Error")
+                    msg.setStandardButtons(QtGui.QMessageBox.Ok)
+                    msg.exec_()
+
+            elif radiofile == True:
+                cursor = db.file_schema.find({"Name": str(self.search_box.toPlainText())}, {"_id": 0, "Path": 1})
+
+                if (cursor.count() == 0):
+
+                    msg = QtGui.QMessageBox()
+                    msg.setIcon(QtGui.QMessageBox.Critical)
+                    msg.setText("Error. File not found")
+                    msg.setWindowTitle("Error")
+                    msg.setStandardButtons(QtGui.QMessageBox.Ok)
+                    msg.exec_()
+                else:
+
+                    for document in cursor:
+                        subprocess.call(["xdg-open", document['Path']])
+                        #self.results.setText(str(self.Search.text()))
+            else:
+                msg = QtGui.QMessageBox()
+                msg.setIcon(QtGui.QMessageBox.Critical)
+                msg.setText("Please Select File or Tag!!!")
+                msg.setWindowTitle("Error")
+                msg.setStandardButtons(QtGui.QMessageBox.Ok)
+                msg.exec_()
+        else:
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Critical)
-
-            msg.setText("Error. File not found")
-
+            msg.setText("Please Enter File or Tag Name!!!")
             msg.setWindowTitle("Error")
             msg.setStandardButtons(QtGui.QMessageBox.Ok)
             msg.exec_()
-        else:
-
-            for document in cursor:
-
-
-
-                print document['Path']
-
-                subprocess.call(["xdg-open", document['Path']])
-
 
 
 

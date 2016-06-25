@@ -74,7 +74,7 @@
    <widget class="QTextEdit" name="description">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>260</x>
       <y>50</y>
       <width>241</width>
       <height>64</height>
@@ -84,7 +84,7 @@
    <widget class="QTextEdit" name="tags">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>260</x>
       <y>150</y>
       <width>241</width>
       <height>64</height>
@@ -160,7 +160,7 @@
    <widget class="QTextEdit" name="type">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>260</x>
       <y>240</y>
       <width>241</width>
       <height>64</height>
@@ -253,6 +253,16 @@
     </property>
     <property name="text">
      <string>File Name</string>
+    </property>
+   </widget>
+   <widget class="QTreeView" name="treeView">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>80</y>
+      <width>256</width>
+      <height>192</height>
+     </rect>
     </property>
    </widget>
   </widget>

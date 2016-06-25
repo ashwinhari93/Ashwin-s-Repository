@@ -20,6 +20,7 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
         self.browse.clicked.connect(self.file_browse)
         self.upload.clicked.connect(self.upload_file)
         self.search_open.clicked.connect(self.search_and_open)
+        self.model = QtGui.QStandardItemModel()
 
     def file_browse(self):
         global fname
@@ -174,7 +175,7 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             radiotag = self.radioTag.isChecked()
             radiofile = self.radioFile.isChecked()
-
+            self.model.clear()
             if radiotag == True:
                 cursorcount = db.tags_schema.find({"tag": str(self.search_box.toPlainText())}, {"_id": 0, "filename": 1})
                 if cursorcount.count() != 0:
@@ -182,8 +183,9 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
                         filearry = document['filename'].split(',')
 
                         for j in filearry:
-                            filelist += j + ","
-                        print filelist
+                            item = QtGui.QStandardItem(j)
+                            self.model.appendRow(item)
+                            self.treeView.setModel(self.model)
                         #self.results.setText(filelist)
                         # cursor = db.file.find({"Name": document['filename']}, {"_id": 0, "Path": 1})
                 else:

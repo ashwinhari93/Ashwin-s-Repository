@@ -21,6 +21,8 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
         self.upload.clicked.connect(self.upload_file)
         self.search_open.clicked.connect(self.search_and_open)
         self.model = QtGui.QStandardItemModel()
+        self.treeView.doubleClicked.connect(self.openfile)
+        self.treeView.clicked.connect(self.previewfile)
 
     def file_browse(self):
         global fname
@@ -229,7 +231,32 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
             msg.setStandardButtons(QtGui.QMessageBox.Ok)
             msg.exec_()
 
+    def openfile(self):
+        index = self.treeView.selectedIndexes()[0]
+        data = index.model().itemFromIndex(index)
+        selecteditem = data.text()
 
+        client = MongoClient()
+        db = client.dr_schemas
+        cursor = db.file.find({"Name": str(selecteditem)}, {"_id": 0, "Path": 1})
+
+        for document in cursor:
+            subprocess.call(["xdg-open", document['Path']])
+
+    def previewfile(self):
+
+        index = self.treeView.selectedIndexes()[0]
+        data = index.model().itemFromIndex(index)
+        selecteditem = data.text()
+
+        client = MongoClient()
+        db = client.dr_schemas
+        cursor = db.file_schema.find({"Name": str(selecteditem)}, {"_id": 0, "Path": 1})
+
+        for document in cursor:
+            pixmap = QtGui.QPixmap(document['Path'])
+            pixmap = pixmap.scaledToHeight(400)
+            self.preview_box.setPixmap(pixmap)
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)

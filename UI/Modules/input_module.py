@@ -1,13 +1,16 @@
 import sys, shutil, time, os, subprocess
 from PyQt4 import QtCore, QtGui, uic
+from PyQt4.QtGui import *
+from PyQt4.QtCore import *
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 qtCreatorFile = "/home/ashwin/DR/input_module.ui"  # Enter file here.
 
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 fname = ''
 type = ''
-
+objectid = ''
 class MyApp(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -15,6 +18,38 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.browse.clicked.connect(self.file_browse)
         self.upload.clicked.connect(self.upload_file)
+        self.tags.textChanged.connect(self.similarObjectDisplay)
+
+    def similarObjectDisplay(self):
+        tag_string = str(self.tags.toPlainText())
+        tag_string_spaceless = tag_string.replace(' ','')
+        tag_array = tag_string_spaceless.split(',')
+        tag_set = set(tag_array)
+        print tag_set
+        client = MongoClient()
+        db = client.dr_schemas
+        files_in_db = db.file_schema.find()
+
+        self.item_table.setRowCount(0)
+        self.item_table.setColumnCount(2)
+        self.item_table.setHorizontalHeaderLabels(['Type','Tags'])
+        for files in files_in_db:
+            spaceless_tags = files['Tags'].replace(' ', '')
+            phrase_set = set(spaceless_tags.split(','))
+
+            if tag_set <= phrase_set:
+                print "Type: " + files['Type'] + " Tags: " + files['Tags']
+                rowPosition = self.item_table.rowCount()
+                self.item_table.insertRow(rowPosition)
+                self.item_table.setItem(rowPosition,0,QTableWidgetItem(files['Type']))
+                self.item_table.setItem(rowPosition,1,QTableWidgetItem(files['Tags']))
+
+        self.item_table.resizeColumnsToContents()
+
+
+
+
+
 
     def file_browse(self):
         global fname
@@ -71,6 +106,7 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
     def upload_file(self):
         global global_filename
         global type
+        global objectid
         if (self.file_path.toPlainText() == ''):
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Critical)
@@ -111,65 +147,51 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             db = client.dr_schemas
 
-            res_exist = self.file_exist_check(global_filename)
 
-            print res_exist
 
-            if (res_exist == 1):
-                msg = QtGui.QMessageBox()
-                msg.setIcon(QtGui.QMessageBox.Critical)
+            file_date = ''
 
-                msg.setText("Error. File exists")
-
-                msg.setWindowTitle("Error")
-                msg.setStandardButtons(QtGui.QMessageBox.Ok)
-                msg.exec_()
+            if(date==''):
+                file_date = str(creation_time)
 
             else:
+                file_date = str(date)
 
-                file_date = ''
+            result = db.file_schema.insert_one({
 
-                if(date==''):
-                    file_date = str(creation_time)
+                "Name": str(filename_part[len(filename_part) - 1]),
+                "Description": str(description),
+                "Type": type,
+                "Color": "",
+                "Project": str(project),
+                "Extension_Type": str(ext),
+                "Creator Details": {
+                    "user id": "",
+                    "user name": "",
+                    "date of creation": file_date,
+                    "group_id": ""
+                },
 
-                else:
-                    file_date = str(date)
+                "Size": str(file_size),
+                "Modified": {
+                    "Number of Modifications": "",
+                    "Last Modified": str(modified_time)
 
-                result = db.file_schema.insert_one({
+                },
+                "Log": [
+                    {
+                        "User Id": "",
+                        "User Name": "",
+                        "Date of Modification": "",
+                        "Details": ""
+                    }
+                ],
+                "Tags": str(tags),
+                "Path": str(flat_file_path),
+                "Linked Files": []
+            })
 
-                    "Name": str(filename_part[len(filename_part) - 1]),
-                    "Description": str(description),
-                    "Type": type,
-                    "Color": "",
-                    "Project": str(project),
-                    "Extension_Type": str(ext),
-                    "Creator Details": {
-                        "user id": "",
-                        "user name": "",
-                        "date of creation": file_date,
-                        "group_id": ""
-                    },
-
-                    "Size": str(file_size),
-                    "Modified": {
-                        "Number of Modifications": "",
-                        "Last Modified": str(modified_time)
-
-                    },
-                    "Log": [
-                        {
-                            "User Id": "",
-                            "User Name": "",
-                            "Date of Modification": "",
-                            "Details": ""
-                        }
-                    ],
-                    "Tags": [],
-                    "Path": str(flat_file_path),
-                    "Linked Files": []
-                })
-
-            print result.inserted_id
+            objectid = result.inserted_id
 
             flat_file_path_mongo = '/home/ashwin/FLAT_FILE_SYSTEM/%s' % (str(result.inserted_id) + "." + ext)
 
@@ -181,19 +203,21 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
             self.checkTags(str(tags))
 
     def checkTags(self, tags):
+        global objectid
         t = tags.split(',')
         client = MongoClient()
 
         db = client.dr_schemas
         for i in t:
-            tagcursor = db.tags_schema.find({"tag": str(i)}, {"_id": 0, "filename": 1})
+            tagcursor = db.tags_schema.find({"tag": str(i)}, {"_id": 0, "objectid": 1})
             if (tagcursor.count() != 0):
                 for document in tagcursor:
                     db.tags_schema.update(
                         {"tag": str(i)},
                         {
                             "$set": {
-                                "filename": document['filename'] + ',' + str(global_filename)
+                                #"filename": document['filename'] + ',' + str(global_filename)
+                                "objectid" : document['objectid'] + ',' + str(objectid)
                             },
                             "$currentDate": {"lastModified": True}
                         }
@@ -201,7 +225,7 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
             else:
                 db.tags_schema.insert_one({
                     "tag": str(i),
-                    "filename": str(global_filename)
+                    "objectid": str(objectid)
                 })
 
     def previewfile(self,path):

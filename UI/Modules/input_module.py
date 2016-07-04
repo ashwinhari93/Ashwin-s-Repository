@@ -4,6 +4,12 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from PyQt4.phonon import Phonon
+import zipfile, re
+from docx import Document
+
+
+
 qtCreatorFile = "/home/ashwin/DR/input_module.ui"  # Enter file here.
 
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
@@ -11,6 +17,8 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 fname = ''
 type = ''
 objectid = ''
+ext = ''
+
 class MyApp(QtGui.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
@@ -19,6 +27,12 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
         self.browse.clicked.connect(self.file_browse)
         self.upload.clicked.connect(self.upload_file)
         self.tags.textChanged.connect(self.similarObjectDisplay)
+        self.stop.clicked.connect(self.stop_video)
+        self.start.clicked.connect(self.start_video)
+        self.stop_2.clicked.connect(self.stop_video_2)
+        self.start_2.clicked.connect(self.start_video_2)
+        self.item_table.itemClicked.connect(self.tagClicked)
+        self.table_scroll.setWidget(self.item_table)
 
     def similarObjectDisplay(self):
         tag_string = str(self.tags.toPlainText())
@@ -31,8 +45,8 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
         files_in_db = db.file_schema.find()
 
         self.item_table.setRowCount(0)
-        self.item_table.setColumnCount(2)
-        self.item_table.setHorizontalHeaderLabels(['Type','Tags'])
+        self.item_table.setColumnCount(3)
+        self.item_table.setHorizontalHeaderLabels(['Type','Tags','Path'])
         for files in files_in_db:
             spaceless_tags = files['Tags'].replace(' ', '')
             phrase_set = set(spaceless_tags.split(','))
@@ -43,12 +57,8 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
                 self.item_table.insertRow(rowPosition)
                 self.item_table.setItem(rowPosition,0,QTableWidgetItem(files['Type']))
                 self.item_table.setItem(rowPosition,1,QTableWidgetItem(files['Tags']))
-
+                self.item_table.setItem(rowPosition,2,QTableWidgetItem(files['Path']))
         self.item_table.resizeColumnsToContents()
-
-
-
-
 
 
     def file_browse(self):
@@ -106,7 +116,8 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
     def upload_file(self):
         global global_filename
         global type
-        global objectid
+        global objectid, ext
+
         if (self.file_path.toPlainText() == ''):
             msg = QtGui.QMessageBox()
             msg.setIcon(QtGui.QMessageBox.Critical)
@@ -202,6 +213,15 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
             self.checkTags(str(tags))
 
+            msg = QtGui.QMessageBox()
+            msg.setIcon(QtGui.QMessageBox.Information)
+
+            msg.setText("File uploaded")
+
+            msg.setWindowTitle("Success")
+            msg.setStandardButtons(QtGui.QMessageBox.Ok)
+            msg.exec_()
+
     def checkTags(self, tags):
         global objectid
         t = tags.split(',')
@@ -228,11 +248,87 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
                     "objectid": str(objectid)
                 })
 
-    def previewfile(self,path):
 
-            pixmap = QtGui.QPixmap(path)
-            pixmap = pixmap.scaledToHeight(400)
-            self.pre_input_preview.setPixmap(pixmap)
+    def start_video(self):
+        self.vp.play()
+
+    def stop_video(self):
+        self.vp.stop()
+
+    def start_video_2(self):
+        self.vp_2.play()
+
+    def stop_video_2(self):
+        self.vp_2.stop()
+
+
+    def tagClicked(self, item):
+        self.tabWidget_2.show()
+        client = MongoClient()
+        db = client.dr_schemas
+        print item.text()
+        cursor = db.file_schema.find({"Path": str(item.text())})
+
+        for document in cursor:
+            if document['Type'] == 'Image':
+                self.stop_2.hide()
+                self.start_2.hide()
+                self.text_preview_2.setText("")
+                self.tabWidget_2.setCurrentIndex(0)
+                pixmap = QtGui.QPixmap(document['Path'])
+                pixmap = pixmap.scaledToHeight(200)
+                self.image_preview_2.setPixmap(pixmap)
+
+            elif document['Type'] == 'Text':
+                self.stop_2.hide()
+                self.start_2.hide()
+                self.image_preview_2.clear()
+                self.scrollArea_2.setWidget(self.text_preview_2)
+                self.tabWidget_2.setCurrentIndex(2)
+                fileopen = open(document['Path']).read()
+                self.text_preview_2.setText(fileopen)
+
+            elif document['Type'] == 'Video':
+                self.stop_2.show()
+                self.start_2.show()
+                #self.gridLayout_3.addWidget(self.vp, 0, 0, 2, 2)
+                self.tabWidget_2.setCurrentIndex(1)
+                self.vp_2.show()
+                media = Phonon.MediaSource(document['Path'])
+                self.vp_2.load(media)
+                self.vp_2.play()
+
+    def previewfile(self,path):
+            global type
+            if(type == 'Image'):
+
+                self.stop.hide()
+                self.start.hide()
+                self.text_preview.setText("")
+                self.tabWidget.setCurrentIndex(0)
+                pixmap = QtGui.QPixmap(path)
+                pixmap = pixmap.scaledToHeight(400)
+                self.image_preview.setPixmap(pixmap)
+
+            elif(type == 'Video'):
+                self.stop.show()
+                self.start.show()
+                #self.gridLayout_3.addWidget(self.vp, 0, 0, 2, 2)
+                self.tabWidget.setCurrentIndex(1)
+                self.vp.show()
+                media = Phonon.MediaSource(path)
+                self.vp.load(media)
+                self.vp.play()
+
+
+            else:
+                self.stop.hide()
+                self.start.hide()
+                self.image_preview.clear()
+                self.scrollArea.setWidget(self.text_preview)
+                self.tabWidget.setCurrentIndex(2)
+                fileopen = open(path).read()
+                self.text_preview.setText(fileopen)
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
